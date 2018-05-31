@@ -151,11 +151,11 @@ bpmext_control_InitCorrectionTable = function(domClass)
 						// straight comparison between listItem and search value
 						if(!searchItems[i].operator || searchItems[i].operator == null || searchItems[i].operator == undefined){			
 							if (columnName == "pricingDate" || columnName == "createdOn"){
-								var searchFromDate = new Date(formatDate(searchItems[i].searchValueDateFrom, true)); // convert to YYYY-MM-DDT00:00:00.000Z
-								var searchToDate = new Date(formatDate(searchItems[i].searchValueDateTo, true)); // convert to YYYY-MM-DDT00:00:00.000Z
+								var searchFromDate = new Date(view._proto.dateTerms(searchItems[i].searchValueDateFrom, true)); // convert to YYYY-MM-DDT00:00:00.000Z
+								var searchToDate = new Date(view._proto.dateTerms(searchItems[i].searchValueDateTo, true)); // convert to YYYY-MM-DDT00:00:00.000Z
 								// Must be of format YYYY-MM-DDT00:00:00.000Z with zeroed out time component in UTC (Z) timezone
 								// Reformatting to ensure all dates have zeroed out time component
-								var listItemDate = new Date(formatDate(new Date(Date.parse(listItem[columnName])), true)); 
+								var listItemDate = new Date(view._proto.dateTerms(new Date(Date.parse(listItem[columnName])), true)); 
 								
 								if (listItemDate.getTime() < searchFromDate.getTime() || listItemDate.getTime() > searchToDate.getTime()){
 									return false;
@@ -652,6 +652,13 @@ bpmext_control_InitCorrectionTable = function(domClass)
 								record: sel,
 								rowId: rowId
 							}
+							var type = elt.classList[1];
+							if(type == "decimal"){	
+								value = view._proto.dollarTerms(value);
+							}else if(type == "percent"){
+								value = view._proto.percentTerms(value);
+							}
+
 							this.setElementValue(view, propName, elt, value);
 							this.addChangedStyle(view);
 							
@@ -869,9 +876,6 @@ bpmext_control_InitCorrectionTable = function(domClass)
 														sel[propName] = simulatedRow[propName];
 													
 														var value = sel[propName];
-														//console.log("PropName: ", propName);
-														//console.log("Value: ", value);
-													
 														if(!sel.getVisualElement)
 														continue;
 														
@@ -879,7 +883,13 @@ bpmext_control_InitCorrectionTable = function(domClass)
 														
 														if(elt == null)
 															continue;
-														//console.log("elt: ", elt);
+														
+															var type = elt.classList[1];
+														if(type == "decimal"){	
+															value = view._proto.dollarTerms(value);
+														}else if(type == "percent"){
+															value = view._proto.percentTerms(value);
+														}
 														
 														view._proto.setElementValue(view, propName, elt, value);
 													}
@@ -1074,51 +1084,48 @@ bpmext_control_InitCorrectionTable = function(domClass)
 			executePartialSubmission: function(view) {
 				var instanceId = view.context.options.processInstanceId.get("value");
 				var selectedCorrectionRows = view.ui.get("Table").getSelectedRecords(true);
-				var list = view.ui.get("Table").getRecords();
-				var indices = view.ui.get("Table").getSelectedIndices();
-				var selectedRowsWithVals = [];	
-				var allCorrectionRowsWithVals = [];
+				//var list = view.ui.get("Table").getRecords();
+				//var indices = view.ui.get("Table").getSelectedIndices();
+				var actionableCRData = [];	
+				//var allCorrectionRowsWithVals = [];
 				var crrbRequest = JSON.parse(JSON.stringify(view.context.options.crrbRequest.get("value")));
-				var extraKeys = ["childrenCache", "_objectPath", "_systemCallbackHandle", "_watchCallbacks", "_inherited"];
-				//console.log("crrbRequest", crrbRequest);
-				//var selectedRowsObj = JSON.parse(selectedCorrectionRows);
-				for (var i = 0; i < indices.length; i++) {
-					for (var j = 0; j < selectedCorrectionRows.length; j++) {
-						if (selectedCorrectionRows[j].invoiceId == list[indices[i]].invoiceId && selectedCorrectionRows[j].invoiceLineItemNum == list[indices[i]].invoiceLineItemNum) {
-							selectedRowsWithVals.push(list[indices[i]]);
-						}
-					}       
-				}
-				for (var k = 0; k < list.length; k++) {
-					allCorrectionRowsWithVals.push(list[k]);
-				}
-				for (var i = 0; i < extraKeys.length; i++) {
-					//console.log("inside key for loop");
+                var extraKeys = ["childrenCache", "_objectPath", "_systemCallbackHandle", "_watchCallbacks", "_inherited"];
+                for (var i = 0; i < extraKeys.length; i++) {
 					delete crrbRequest[extraKeys[i]];
-					//console.log("before delete selectedCorrectionRows[extraKeys[i]]", selectedCorrectionRows);
-					for (var j = 0; j < selectedRowsWithVals.length; j++) {
-						delete selectedRowsWithVals[j][extraKeys[i]];
-						//console.log("after delete selectedCorrectionRows[extraKeys[i]]", selectedCorrectionRows);		
-					}
-					for (var k = 0; k < allCorrectionRowsWithVals.length; k++) {
-						delete allCorrectionRowsWithVals[k][extraKeys[i]];
-					}
 				}
-			
+				//console.log("crrbRequest", crrbRequest);
+                //var selectedRowsObj = JSON.parse(selectedCorrectionRows);
+                for (var i = 0; i < selectedCorrectionRows.length; i++) {
+                    if (!selectedCorrectionRows[i].isLocked) {
+                        var obj = {
+                            invoiceId : selectedCorrectionRows[i].invoiceId,
+                            invoiceLineItemNum : selectedCorrectionRows[i].invoiceLineItemNum,
+                            newWac : selectedCorrectionRows[i].newWac,
+                            newBid : selectedCorrectionRows[i].newBid,
+                            newLead : selectedCorrectionRows[i].newLead,
+                            newConRef : selectedCorrectionRows[i].newConRef,
+                            newContCogPer : selectedCorrectionRows[i].newContCogPer,
+                            newItemVarPer : selectedCorrectionRows[i].newItemVarPer,
+                            newWacCogPer : selectedCorrectionRows[i].newWacCogPer,
+                            newItemMkUpPer : selectedCorrectionRows[i].newItemMkUpPer,
+                            newAwp : selectedCorrectionRows[i].newAwp,
+                            newNoChargeBack : selectedCorrectionRows[i].newNoChargeBack,
+                            newOverridePrice : selectedCorrectionRows[i].newOverridePrice
+                        }
+                        actionableCRData.push(obj);
+                        console.log("actionableCRData:  ", actionableCRData);
+                    }
+                }
 				var input = {
-					selectedCorrectionRows : selectedRowsWithVals,
-					correctionTable : allCorrectionRowsWithVals,
+					selectedCorrectionRows : actionableCRData,
 					instanceId : instanceId,
 					crrbRequest : crrbRequest
 				};
-				//console.log("input jsonstringify", JSON.stringify(input));
-				//console.log("input stringified", input);
 				var serviceArgs = {
 					params: JSON.stringify(input),
 					load: function(data) {
-						//console.log("service returned ", data);
 						view._proto.setProgressBar(view, false);
-						view.toggleSubmittedRows(view, allCorrectionRowsWithVals, selectedRowsWithVals, true);
+						view._proto.toggleSubmittedRows(view, actionableCRData);
 						view._proto.searchTable(view);
 					},
 					error: function(e) {
@@ -1130,16 +1137,16 @@ bpmext_control_InitCorrectionTable = function(domClass)
 				view.context.options.partialSubmissionService(serviceArgs);
 				view.ui.get("Modal_Partial_Submit").setVisible(false);
 			},
-			toggleSubmittedRows: function(view, allCRs, selectedCRs, type) {
+			toggleSubmittedRows: function(view, selectedCRs) {
+                var allCRs = view.ui.get("Table").getRecords();
 				for (var i = 0; i < allCRs.length; i++) {
 					for (var j = 0; j < selectedCRs.length; j++) {
 						if (allCRs[i].invoiceId == selectedCRs[j].invoiceId && allCRs[i].invoiceLineItemNum == selectedCRs[j].invoiceLineItemNum) {
-							allCRs[i].isLocked = type;
-							allCRs[i].isSubmitted = type;
+							allCRs[i].isLocked = true;
+							allCRs[i].isSubmitted = true;
 						}
 					}
 				}	
-				//this.context.binding.set("value", allCRs);
 			},
 			createEditableDiv: function(view, record, propName, type, tableRowId){
 				var div = document.createElement("div");
@@ -1185,18 +1192,19 @@ bpmext_control_InitCorrectionTable = function(domClass)
 
 				return "$"+ x1 + x2;
 			},
+			dateTerms: function (inputDate){
+				var newDt = new Date(inputDate);
+				newDt = new Date(newDt.getTime() + (newDt.getTimezoneOffset() * 1000)); 
+				var dtStr = (newDt.getUTCMonth() + 1)+"/"+newDt.getUTCDate()+"/"+newDt.getUTCFullYear();  
+				
+				return dtStr;
+			},
 			_onTableCell: function(view, cell)
 			{
 				var dollarTerms = view._proto.dollarTerms;
 				var percentTerms = view._proto.percentTerms;
+				var dateTerm = view._proto.dateTerms;
 				
-				function formatDate(inputDate){
-					var newDt = new Date(inputDate);
-					newDt = new Date(newDt.getTime() + (newDt.getTimezoneOffset() * 1000)); 
-					var dtStr = (newDt.getUTCMonth() + 1)+"/"+newDt.getUTCDate()+"/"+newDt.getUTCFullYear();  
-					
-					return dtStr;
-				}
 				var thd = "."; // Thousand separator
 				var dec = ","; // Decimal separator	
 				var record = cell.row.data;
@@ -1225,7 +1233,7 @@ bpmext_control_InitCorrectionTable = function(domClass)
 						this.setupDataToVisualElements(view, record);
 						break;
 					case 1:
-						/*td.innerHTML = "<div class=colgroup><span class=tooltiptext>Customer<div class=littleRight><br>Old WAC<br>Cur WAC<br>New WAC</div></span><div>" + record.customerId + "</div><div>" + record.customerName + "</div><div align=right style=color:red>" + dollarTerms(record.oldWac) + "</div><div align=right style=color:red>" + dollarTerms(record.curWac) + "</div></div>";
+						td.innerHTML = "<div class=colgroup><span class=tooltiptext>Customer<div class=littleRight><br>Old WAC<br>Cur WAC<br>New WAC</div></span><div>" + record.customerId + "</div><div>" + record.customerName + "</div><div align=right style=color:red>" + dollarTerms(record.oldWac) + "</div><div align=right style=color:red>" + dollarTerms(record.curWac) + "</div></div>";
 						cell.setSortValue(record.customerId);
 						
 						if(record.isLocked){
@@ -1234,10 +1242,10 @@ bpmext_control_InitCorrectionTable = function(domClass)
 							var div = this.createEditableDiv(view, record, "newWac", "decimal", tableRowId);
 							td.appendChild(div);
 							td.style.verticalAlign = "bottom"
-						}*/
+						}
 						
 						// single line html creation:
-						td = view._proto.setInnerHTML(view, td, record, "customerId", "customerName", "oldWac", "curWac", "newWac", "decimal", tableRowId);
+						//td = view._proto.setInnerHTML(view, td, record, "customerId", "customerName", "oldWac", "curWac", "newWac", "decimal", tableRowId);
 						
 						break;
 					case 2:
@@ -1251,13 +1259,13 @@ bpmext_control_InitCorrectionTable = function(domClass)
 							td.appendChild(div);
 							td.style.verticalAlign = "bottom"
 						}
+						//td = view._proto.setInnerHTML(view, td, record, "materialName", "h2", "oldBid", "curBid", "newBid", "decimal", tableRowId);
 						break;
 					case 3:
-						td.innerHTML = "<table style=width:120px><tr><td>" + formatDate(record.pricingDate) + "</td></tr><tr><td>&nbsp;</td></tr><tr><td>" + "<tr><td align=right style=color:red>" + record.oldLead + "</td></tr><tr><td align=right style=color:red>" + record.oldLead + "</td></tr></table>";
-						td.style.verticalAlign = "bottom";
-						/*td.innerHTML = "<div>" + formatDate(record.pricingDate) + "</div><div align=right style=color:red>" + record.oldLead + "</div><div align=right style=color:red>" + record.curLead + "</div>";
+						
+						td.innerHTML = "<div>" + dateTerm(record.pricingDate) + "</div><div align=right style=color:red>" + record.oldLead + "</div><div align=right style=color:red>" + record.curLead + "</div>";
 						cell.setSortValue(record.pricingDate);
-						*/
+						
 						if(record.isLocked){
 							td.innerHTML += "<div align=right>"+ record.newLead + "</div>";	
 						}else{
@@ -1265,10 +1273,12 @@ bpmext_control_InitCorrectionTable = function(domClass)
 							td.appendChild(div);
 							td.style.verticalAlign = "bottom"
 						}
+						//td = view._proto.setInnerHTML(view, td, record, "pricingDate", "h2", "oldBid", "curBid", "newBid", "decimal", tableRowId);
 						break;
 					case 4:
-						td.innerHTML = " <div class=colgroup> <span class=tooltiptext>Customer<div class=littleRight><br>Old WAC<br>Cur WAC<br>New WAC</div></span><div>" + record.invoiceId +"/"+ "</div><div>" + record.invoiceLineItemNum + "</div><div align=right style=color:red>" + dollarTerms(record.oldPrice) + "</div><div align=right style=color:red>" + dollarTerms(record.curPrice) + "</div><div>" + dollarTerms(record.newPrice) + "</div></div>";
+						td.innerHTML = "<div>" + record.invoiceId +"/"+ "</div><div>" + record.invoiceLineItemNum + "</div><div align=right style=color:red>" + dollarTerms(record.oldPrice) + "</div><div align=right style=color:red>" + dollarTerms(record.curPrice) + "</div><div align=right>" + dollarTerms(record.newPrice) + "</div>";
 						cell.setSortValue(record.invoiceId);
+						td.style.verticalAlign = "bottom"
 						break;
 					case 5:
 						td.innerHTML = "<div>" + record.supplierId + "</div><div>" + record.supplierName + "</div><div align=right style=color:red>" + record.oldConRef + "</div><div align=right style=color:red>" + record.curConRef + "</div>";
@@ -1312,7 +1322,7 @@ bpmext_control_InitCorrectionTable = function(domClass)
 						}
 						break;
 					case 9:
-						td.innerHTML = "<div>" + formatDate(record.createdOn) + "</div><div align=right style=color:red>" + percentTerms(record.oldWacCogPer) + "</div><div align=right style=color:red>" + percentTerms(record.curWacCogPer) + "</div>";
+						td.innerHTML = "<div>" + dateTerm(record.createdOn) + "</div><div align=right style=color:red>" + percentTerms(record.oldWacCogPer) + "</div><div align=right style=color:red>" + percentTerms(record.curWacCogPer) + "</div>";
 						cell.setSortValue(record.createdOn);
 						
 						if(record.isLocked){
