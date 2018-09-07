@@ -1119,7 +1119,7 @@ bpmext_control_InitCorrectionTable = function(domClass)
 				var input = {
 					selectedCorrectionRows : actionableCRData,
 					instanceId : instanceId,
-					crrbRequest : crrbRequest
+					crrbRequest : crrbRequest 
 				};
 				var serviceArgs = {
 					params: JSON.stringify(input),
@@ -1249,7 +1249,7 @@ bpmext_control_InitCorrectionTable = function(domClass)
 						
 						break;
 					case 2:
-						td.innerHTML = "<div>" + record.materialId + "</div><div>" + record.materialName + "</div><div align=right style=color:red>" + dollarTerms(record.oldBid) + "</div><div align=right style=color:red>" + dollarTerms(record.curBid) + "</div>";
+						td.innerHTML = "<div class=colgroup><span class=tooltiptext>Customer<div class=littleRight><br>Old WAC<br>Cur WAC<br>New WAC</div></span><div>" + record.materialId + "</div><div>" + record.materialName + "</div><div align=right style=color:red>" + dollarTerms(record.oldBid) + "</div><div align=right style=color:red>" + dollarTerms(record.curBid) + "</div></div>";
 						cell.setSortValue(record.materialId);
 						
 						if(record.isLocked){
